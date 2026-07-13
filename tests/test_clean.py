@@ -1,4 +1,5 @@
 import pandas as pd
+import pytest
 
 from clean import clean_players, clean_wages, _parse_money
 from tiers import competition_tier
@@ -61,3 +62,15 @@ def test_clean_wages_annualizes_and_maps_position():
     assert out.loc[out["name"] == "P1", "position"].item() == "ATT"
     assert out.loc[out["name"] == "P1", "wage"].item() == 10_000 * 52
     assert out.loc[out["name"] == "P1", "tier"].item() == 1
+
+
+def test_clean_players_raises_clear_error_on_unexpected_format():
+    df = pd.DataFrame({"player_id": [1], "player_name": ["A"]})  # faltan columnas clave
+    with pytest.raises(ValueError, match="Formato inesperado"):
+        clean_players(df)
+
+
+def test_clean_wages_raises_clear_error_on_unexpected_format():
+    df = pd.DataFrame({"name": ["A"], "wage": ["€10K"]})  # faltan columnas clave
+    with pytest.raises(ValueError, match="Formato inesperado"):
+        clean_wages(df)

@@ -10,6 +10,7 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 
+from config import MAX_AGE, MAX_MARKET_VALUE, MAX_WAGE, MIN_AGE, MIN_MARKET_VALUE, MIN_WAGE
 from tiers import competition_tier
 
 POSITION_CODE_MAP = {
@@ -19,9 +20,19 @@ POSITION_CODE_MAP = {
     "ST": "ATT", "CF": "ATT", "RW": "ATT", "LW": "ATT", "SS": "ATT",
 }
 
-MIN_AGE, MAX_AGE = 14, 45
-MIN_MARKET_VALUE, MAX_MARKET_VALUE = 1_000, 300_000_000
-MIN_WAGE, MAX_WAGE = 1_000, 60_000_000  # sueldo anual
+REQUIRED_PLAYER_COLUMNS = {
+    "player_id", "player_name", "position", "main_position", "birth_date",
+    "team_name", "competition_name", "market_value",
+}
+REQUIRED_WAGE_COLUMNS = {"name", "dob", "positions", "value", "wage", "club_name", "club_league_name"}
+
+
+def _validate_schema(df: pd.DataFrame, required: set, source_name: str) -> None:
+    """Falla rapido y con un mensaje claro si la fuente cambio de formato,
+    en vez de dejar que pandas lance un KeyError críptico mas adelante."""
+    missing = required - set(df.columns)
+    if missing:
+        raise ValueError(f"Formato inesperado en {source_name}: faltan columnas {sorted(missing)}")
 
 
 def _parse_money(value: str) -> float:
@@ -44,6 +55,7 @@ def _parse_money(value: str) -> float:
 
 
 def clean_players(df: pd.DataFrame, reference_date: datetime | None = None) -> tuple[pd.DataFrame, dict]:
+    _validate_schema(df, REQUIRED_PLAYER_COLUMNS, "data.csv")
     reference_date = reference_date or datetime.utcnow()
     metrics = {"input_rows": len(df)}
     out = df.copy()
@@ -85,6 +97,7 @@ def clean_wages(df: pd.DataFrame, reference_date: datetime | None = None) -> tup
     El sueldo de la fuente es semanal (convencion sofifa/EA FC); se anualiza
     (x52) para poder compararlo con el market_value anual-equivalente.
     """
+    _validate_schema(df, REQUIRED_WAGE_COLUMNS, "wages_raw.csv")
     reference_date = reference_date or datetime.utcnow()
     metrics = {"input_rows": len(df)}
     out = df.copy()
